@@ -196,6 +196,11 @@ impl<F: SoundFactory, S: SouvlakiControls> Player<F, S> {
         Ok(())
     }
 
+    /// Returns a value between 0.0 and 1.0
+    pub fn get_volume(&self) -> f32 {
+        ((self.volume + 60.0) / 61.0).powf(1.0 / 0.44)
+    }
+
     pub fn play(&mut self, track: &Tracks, start_position: Option<f64>) -> Result<(f64, f64)> {
         logging::debug!("Trying to play track {}", track.name);
 
@@ -389,7 +394,7 @@ impl<F: SoundFactory, S: SouvlakiControls> Player<F, S> {
         }
     }
 
-    /// Gets player progress from `track`
+    /// Gets track duration from `track`
     pub fn get_duration(&self) -> f64 {
         if let Some(ref player_track) = self.track {
             player_track.duration

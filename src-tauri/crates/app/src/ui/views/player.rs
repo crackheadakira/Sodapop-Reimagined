@@ -16,18 +16,19 @@ use crate::{
 
 pub struct PlayerView {
     focus_handle: FocusHandle,
-    progress_slider: f64,
-    is_seeking: bool,
     player_state: PlayerState,
+    progress_slider: f64,
+    volume_slider: f64,
+    is_seeking: bool,
 }
 
 impl PlayerView {
     pub fn new(cx: &mut Context<Self>) -> Self {
-        let progress = {
+        let (progress, volume) = {
             let state = cx.app_state();
             let config = state.config.try_read().expect("error reading config lock");
 
-            config.playback.progress
+            (config.playback.progress, config.playback.volume)
         };
 
         let player_state = {
@@ -42,9 +43,10 @@ impl PlayerView {
 
         let view = Self {
             focus_handle: cx.focus_handle(),
-            progress_slider: progress,
-            is_seeking: false,
             player_state,
+            progress_slider: progress,
+            volume_slider: volume,
+            is_seeking: false,
         };
 
         Self::subscribe_to_events(cx);
@@ -77,6 +79,10 @@ impl PlayerView {
                     | PlayerEvent::NextTrackInQueue
                     | PlayerEvent::PreviousTrackInQueue => {
                         view.player_state = PlayerState::Playing;
+                        cx.notify();
+                    }
+                    PlayerEvent::SetVolume { volume } => {
+                        view.volume_slider = volume as f64;
                         cx.notify();
                     }
                     _ => (),
@@ -323,11 +329,46 @@ impl Render for PlayerView {
                     ),
             )
             .child(
-                div().col_span(1).child("volume").child(
-                    Icon::new(IconVariants::Speaker)
-                        .text_color(theme.text.tertiary.default)
-                        .size_4(),
-                ),
+                div()
+                    .col_span(1)
+                    .pr_4()
+                    .flex()
+                    .items_center()
+                    .gap_3()
+                    .justify_end()
+                    .child(
+                        Icon::new(IconVariants::Speaker)
+                            .size_5()
+                            .text_color(theme.text.secondary.default),
+                    )
+                    .child(
+                        Slider::new("player:volume_slider", self.focus_handle.clone())
+                            .value(self.volume_slider)
+                            .step(0.01)
+                            .max(1.0)
+                            .on_commit({
+                                let entity = cx.entity();
+                                move |progress, cx| {
+                                    entity.update(cx, |this, cx| {
+                                        let state = cx.app_state();
+                                        let player_bus = &state.player_bus;
+                                        player_bus.emit(PlayerEvent::SetVolume {
+                                            volume: progress as f32,
+                                        });
+                                    });
+                                }
+                            })
+                            .on_input({
+                                let entity = cx.entity();
+
+                                move |slider_value, cx| {
+                                    entity.update(cx, |this, cx| {
+                                        this.volume_slider = slider_value;
+                                        cx.notify();
+                                    });
+                                }
+                            }),
+                    ),
             )
     }
 }

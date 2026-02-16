@@ -119,7 +119,7 @@ impl Slider {
         let on_commit = self.on_commit.clone();
         let state = self.state;
 
-        move |_, _window, cx| {
+        move |_event, _window, cx| {
             let new_value = f(state.value, state);
 
             if let Some(ref callback) = on_commit {

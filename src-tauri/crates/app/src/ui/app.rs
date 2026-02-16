@@ -44,9 +44,12 @@ pub fn run() {
                 let state = cx.app_state().clone();
 
                 async move {
-                    let progress = {
+                    let (progress, volume) = {
                         let player = lock_or_log(state.player.read(), "Player Read Lock").unwrap();
-                        player.track.as_ref().map(|t| t.progress)
+                        (
+                            player.track.as_ref().map(|t| t.progress),
+                            player.get_volume(),
+                        )
                     };
 
                     let mut config =
@@ -59,14 +62,13 @@ pub fn run() {
 
                     state.db.shutdown().unwrap();
 
-                    if let Some(progress) = progress {
-                        config
-                            .update_config_and_write(VeilConfigEvent {
-                                progress: Some(progress),
-                                ..VeilConfigEvent::default()
-                            })
-                            .expect("error writing config on app exit");
-                    }
+                    config
+                        .update_config_and_write(VeilConfigEvent {
+                            progress,
+                            volume: Some(volume as f64),
+                            ..VeilConfigEvent::default()
+                        })
+                        .expect("error writing config on app exit");
                 }
             })
             .detach();
