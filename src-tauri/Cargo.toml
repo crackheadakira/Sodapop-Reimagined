@@ -124,4 +124,4 @@ debug = true
 panic = "unwind"
 
 [patch.crates-io]
-gpui = { git = "https://github.com/zed-industries/zed", rev = "87c92f3db314061f79d6945a9bd8d22227915d4f" }
+gpui = { git = "https://github.com/zed-industries/zed", rev = "c4f98689a1902f46384ac6824d987715591112c1" }

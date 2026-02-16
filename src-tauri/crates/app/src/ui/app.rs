@@ -17,7 +17,8 @@ use crate::{
 use gpui::{
     App, AppContext, Application, Bounds, Context, Entity, FocusHandle, Focusable, IntoElement,
     ParentElement, Point, Render, SharedString, Styled, TitlebarOptions, Window,
-    WindowBackgroundAppearance, WindowBounds, WindowKind, WindowOptions, actions, div, px, size,
+    WindowBackgroundAppearance, WindowBounds, WindowKind, WindowOptions, actions, div, px, rems,
+    size,
 };
 use logging::lock_or_log;
 
@@ -185,7 +186,14 @@ impl Render for AppWindow {
                             this.navigate(*route, cx);
                         },
                     )))
-                    .child(div().flex_grow().p_8().child(self.render_route(cx))),
+                    .child(
+                        div()
+                            .flex_grow()
+                            .p_8()
+                            .max_w(rems(100.0))
+                            .mx_auto()
+                            .child(self.render_route(cx)),
+                    ),
             )
             .child(self.player_view.clone())
             .child(self.modal_layer.clone())

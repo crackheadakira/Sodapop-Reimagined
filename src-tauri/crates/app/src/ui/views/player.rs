@@ -110,16 +110,13 @@ impl PlayerView {
         .detach();
     }
 
-    fn get_player_info(cx: &Context<Self>) -> Option<Tracks> {
+    fn get_current_track(cx: &Context<Self>) -> Option<Tracks> {
         let state = cx.app_state();
 
         let track_id = {
             let queue = state.queue.try_lock().ok()?;
             queue.current()?
         };
-
-        // TODO: this whole thing should be improved somehow, code feels messy
-        // especially regarding sliders.
 
         let track = state.db.by_id::<Tracks>(&track_id).ok()?;
 
@@ -131,7 +128,7 @@ impl Render for PlayerView {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = cx.app_theme();
 
-        let Some(track) = Self::get_player_info(cx) else {
+        let Some(track) = Self::get_current_track(cx) else {
             return div();
         };
 
@@ -349,7 +346,7 @@ impl Render for PlayerView {
                             .on_commit({
                                 let entity = cx.entity();
                                 move |progress, cx| {
-                                    entity.update(cx, |this, cx| {
+                                    entity.update(cx, |_, cx| {
                                         let state = cx.app_state();
                                         let player_bus = &state.player_bus;
                                         player_bus.emit(PlayerEvent::SetVolume {

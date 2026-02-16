@@ -32,7 +32,7 @@ impl Render for AllAlbumsView {
         let theme = cx.global::<Theme>();
 
         div()
-            .image_cache(AlbumCoverCacheProvider::new("cache:all_albums", 72))
+            .image_cache(AlbumCoverCacheProvider::new("cache:all_albums", 48))
             .size_full()
             .bg(theme.background.primary.default)
             .flex()
