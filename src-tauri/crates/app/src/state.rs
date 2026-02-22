@@ -248,6 +248,7 @@ pub fn handle_state_setup(cx: &mut App) -> Result<(), Box<dyn std::error::Error>
         }
 
         let saved_progress = config.playback.progress;
+        let volume = config.playback.volume;
         queue.set_current_index(config.playback.queue_idx);
 
         if let Some(track_id) = queue.current() {
@@ -255,6 +256,10 @@ pub fn handle_state_setup(cx: &mut App) -> Result<(), Box<dyn std::error::Error>
             drop(config);
 
             if let Ok(track) = state.db.by_id::<common::Tracks>(&track_id) {
+                state.player_bus.emit(PlayerEvent::SetVolume {
+                    volume: volume as f32,
+                });
+
                 state.player_bus.emit(PlayerEvent::Initialize {
                     track,
                     progress: saved_progress,
