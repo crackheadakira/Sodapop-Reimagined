@@ -8,10 +8,10 @@ mod services;
 mod state;
 mod ui;
 
+pub use config::VeilConfigChange;
 pub(crate) use state::{AppState, VeilState};
 
 pub mod events {
-    pub use super::config::VeilConfigEvent;
     pub use super::event_bus::{EventBus, EventSystemHandler};
     pub use super::queue::QueueEvent;
     pub use super::services::player::PlayerEvent;

@@ -5,9 +5,9 @@ use rand::{Rng, SeedableRng, rngs::SmallRng};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    VeilState,
+    VeilConfigChange, VeilState,
     error::VeilError,
-    events::{EventSystemHandler, UIUpdateEvent, VeilConfigEvent},
+    events::{EventSystemHandler, UIUpdateEvent},
 };
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq)]
@@ -420,18 +420,12 @@ impl QueueEvent {
             queue.set_global(tracks);
             queue.set_origin(origin);
 
-            config.update_config_and_write(VeilConfigEvent {
-                queue_origin: Some(origin),
-                ..VeilConfigEvent::default()
-            })?;
+            config.update_config_and_write(VeilConfigChange::SetQueueOrigin(origin))?;
         }
 
         if queue.current_index() != queue_idx {
             queue.set_current_index(queue_idx);
-            config.update_config_and_write(VeilConfigEvent {
-                queue_idx: Some(queue_idx),
-                ..VeilConfigEvent::default()
-            })?;
+            config.update_config_and_write(VeilConfigChange::SetQueueIdx(queue_idx))?;
         }
 
         Ok(())

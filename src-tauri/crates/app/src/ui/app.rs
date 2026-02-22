@@ -1,8 +1,7 @@
 use std::sync::Arc;
 
 use crate::{
-    VeilState,
-    events::VeilConfigEvent,
+    VeilConfigChange, VeilState,
     state::{AppState, handle_state_setup},
     ui::{
         Sidebar, Theme,
@@ -63,12 +62,12 @@ pub fn run() {
 
                     state.db.shutdown().unwrap();
 
+                    config.update_many([
+                        VeilConfigChange::SetProgress(progress.unwrap_or(0.0)),
+                        VeilConfigChange::SetVolume(volume as f64),
+                    ]);
                     config
-                        .update_config_and_write(VeilConfigEvent {
-                            progress,
-                            volume: Some(volume as f64),
-                            ..VeilConfigEvent::default()
-                        })
+                        .write_config()
                         .expect("error writing config on app exit");
                 }
             })

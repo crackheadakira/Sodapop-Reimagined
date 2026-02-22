@@ -8,12 +8,11 @@ use std::{
 use tokio::sync::Notify;
 
 use crate::{
+    VeilConfigChange,
     config::VeilConfig,
     discord::DiscordState,
     error::VeilError,
-    events::{
-        EventBus, EventSystemHandler, PlayerEvent, QueueEvent, UIUpdateEvent, VeilConfigEvent,
-    },
+    events::{EventBus, EventSystemHandler, PlayerEvent, QueueEvent, UIUpdateEvent},
     queue::{QueueOrigin, QueueSystem},
     services::{
         player::{next_track_status, try_preloading_next_sound_handle},
@@ -33,7 +32,7 @@ pub struct VeilState {
 
     pub player_bus: EventBus<PlayerEvent>,
     pub ui_bus: EventBus<UIUpdateEvent>,
-    pub config_bus: EventBus<VeilConfigEvent>,
+    pub config_bus: EventBus<VeilConfigChange>,
     pub queue_bus: EventBus<QueueEvent>,
 }
 
@@ -189,23 +188,26 @@ pub fn handle_state_setup(cx: &mut App) -> Result<(), Box<dyn std::error::Error>
             while let Ok(event) = rx.recv().await {
                 let state = state.clone();
 
-                if let Some(discord_enabled) = event.discord_enabled {
-                    let mut discord = lock_or_log(state.discord.lock(), "Discord Mutex").unwrap();
-                    let player = lock_or_log(state.player.read(), "Player Read Lock").unwrap();
+                match event {
+                    VeilConfigChange::SetDiscordStatus(status) => {
+                        let mut discord =
+                            lock_or_log(state.discord.lock(), "Discord Mutex").unwrap();
+                        let player = lock_or_log(state.player.read(), "Player Read Lock").unwrap();
 
-                    if discord_enabled {
-                        if discord.connect() {
-                            let progress = player.get_progress();
-                            discord.update_activity_progress(progress);
+                        if status {
+                            if discord.connect() {
+                                let progress = player.get_progress();
+                                discord.update_activity_progress(progress);
+                            }
+                        } else {
+                            discord.close();
                         }
-                    } else {
-                        discord.close();
                     }
-                }
-
-                if let Some(l) = event.last_fm_enabled {
-                    let mut lastfm = state.lastfm.lock().await;
-                    lastfm.enable(l);
+                    VeilConfigChange::SetLastFmStatus(status) => {
+                        let mut lastfm = state.lastfm.lock().await;
+                        lastfm.enable(status);
+                    }
+                    _ => (),
                 };
 
                 let mut config = lock_or_log(state.config.write(), "Config Write").unwrap();

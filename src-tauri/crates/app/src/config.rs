@@ -80,27 +80,22 @@ pub enum ThemeMode {
     System,
 }
 
-#[derive(Serialize, Deserialize, Clone, Default)]
-pub struct VeilConfigEvent {
-    pub theme: Option<ThemeMode>,
+#[derive(Clone)]
+pub enum VeilConfigChange {
+    SetTheme(ThemeMode),
+    SetDiscordStatus(bool),
 
-    pub discord_enabled: Option<bool>,
+    SetMusicDirectory(String),
 
-    pub last_fm_enabled: Option<bool>,
+    SetLastFmStatus(bool),
+    SetLastFmSessionKey(String),
 
-    pub music_dir: Option<String>,
+    SetQueueOrigin(QueueOrigin),
+    SetQueueIdx(usize),
+    SetRepeatMode(RepeatMode),
 
-    pub last_fm_session_key: Option<String>,
-
-    pub queue_origin: Option<QueueOrigin>,
-
-    pub queue_idx: Option<usize>,
-
-    pub repeat_mode: Option<RepeatMode>,
-
-    pub progress: Option<f64>,
-
-    pub volume: Option<f64>,
+    SetProgress(f64),
+    SetVolume(f64),
 }
 
 impl VeilConfig {
@@ -134,37 +129,38 @@ impl VeilConfig {
     }
 
     /// Update config field values
-    fn update_config(&mut self, config: VeilConfigEvent) {
-        // Update UI related preferences
-        self.ui.theme = config.theme.unwrap_or(self.ui.theme);
+    fn update_config(&mut self, change: VeilConfigChange) {
+        match change {
+            VeilConfigChange::SetTheme(theme_mode) => self.ui.theme = theme_mode,
+            VeilConfigChange::SetDiscordStatus(status) => {
+                self.integrations.discord_enabled = status
+            }
+            VeilConfigChange::SetMusicDirectory(music_dir) => {
+                self.library.music_dir = Some(music_dir)
+            }
+            VeilConfigChange::SetLastFmStatus(status) => self.integrations.last_fm_enabled = status,
+            VeilConfigChange::SetLastFmSessionKey(session_key) => {
+                self.integrations.last_fm_session_key = Some(session_key)
+            }
+            VeilConfigChange::SetQueueOrigin(queue_origin) => {
+                self.playback.queue_origin = Some(queue_origin)
+            }
+            VeilConfigChange::SetQueueIdx(queue_idx) => self.playback.queue_idx = queue_idx,
+            VeilConfigChange::SetRepeatMode(repeat_mode) => self.playback.repeat_mode = repeat_mode,
+            VeilConfigChange::SetProgress(progress) => self.playback.progress = progress,
+            VeilConfigChange::SetVolume(volume) => self.playback.volume = volume,
+        };
+    }
 
-        // Update library related preferences
-        self.library.music_dir = config.music_dir.or(self.library.music_dir.take());
-
-        // Update integration related preferences
-        self.integrations.last_fm_session_key = config
-            .last_fm_session_key
-            .or(self.integrations.last_fm_session_key.take());
-
-        self.integrations.discord_enabled = config
-            .discord_enabled
-            .unwrap_or(self.integrations.discord_enabled);
-
-        self.integrations.last_fm_enabled = config
-            .last_fm_enabled
-            .unwrap_or(self.integrations.last_fm_enabled);
-
-        // Update playback related preferences
-        self.playback.queue_origin = config.queue_origin.or(self.playback.queue_origin.take());
-        self.playback.queue_idx = config.queue_idx.unwrap_or(self.playback.queue_idx);
-        self.playback.repeat_mode = config.repeat_mode.unwrap_or(self.playback.repeat_mode);
-        self.playback.progress = config.progress.unwrap_or(self.playback.progress);
-        self.playback.volume = config.volume.unwrap_or(self.playback.volume);
+    pub fn update_many(&mut self, changes: impl IntoIterator<Item = VeilConfigChange>) {
+        for c in changes {
+            self.update_config(c);
+        }
     }
 
     /// Update config field values and writes it to disk
-    pub fn update_config_and_write(&mut self, config: VeilConfigEvent) -> Result<(), VeilError> {
-        self.update_config(config);
+    pub fn update_config_and_write(&mut self, change: VeilConfigChange) -> Result<(), VeilError> {
+        self.update_config(change);
         self.write_config()?;
 
         Ok(())
@@ -189,17 +185,28 @@ mod tests {
     use super::*;
 
     #[test]
+    fn update_many() {
+        let mut config = VeilConfig::default();
+
+        assert_eq!(config.ui.theme, ThemeMode::Dark);
+        assert_eq!(config.integrations.last_fm_enabled, false);
+
+        config.update_many([
+            VeilConfigChange::SetTheme(ThemeMode::Dark),
+            VeilConfigChange::SetLastFmStatus(true),
+        ]);
+
+        assert_eq!(config.ui.theme, ThemeMode::Dark);
+        assert_eq!(config.integrations.last_fm_enabled, true);
+    }
+
+    #[test]
     fn update_theme() {
         let mut config = VeilConfig::default();
 
         assert_eq!(config.ui.theme, ThemeMode::Dark);
 
-        config.update_config({
-            VeilConfigEvent {
-                theme: Some(ThemeMode::Light),
-                ..VeilConfigEvent::default()
-            }
-        });
+        config.update_config(VeilConfigChange::SetTheme(ThemeMode::Light));
 
         assert_eq!(config.ui.theme, ThemeMode::Light);
     }
@@ -210,12 +217,7 @@ mod tests {
 
         assert_eq!(config.library.music_dir, None);
 
-        config.update_config({
-            VeilConfigEvent {
-                music_dir: Some("hello".to_owned()),
-                ..VeilConfigEvent::default()
-            }
-        });
+        config.update_config(VeilConfigChange::SetMusicDirectory("hello".to_owned()));
 
         assert_eq!(config.library.music_dir, Some("hello".to_owned()));
     }
@@ -226,12 +228,7 @@ mod tests {
 
         assert_eq!(config.integrations.discord_enabled, false);
 
-        config.update_config({
-            VeilConfigEvent {
-                discord_enabled: Some(true),
-                ..VeilConfigEvent::default()
-            }
-        });
+        config.update_config(VeilConfigChange::SetDiscordStatus(true));
 
         assert_eq!(config.integrations.discord_enabled, true);
     }
@@ -242,12 +239,7 @@ mod tests {
 
         assert_eq!(config.integrations.last_fm_enabled, false);
 
-        config.update_config({
-            VeilConfigEvent {
-                last_fm_enabled: Some(true),
-                ..VeilConfigEvent::default()
-            }
-        });
+        config.update_config(VeilConfigChange::SetLastFmStatus(true));
 
         assert_eq!(config.integrations.last_fm_enabled, true);
     }
@@ -258,12 +250,7 @@ mod tests {
 
         assert_eq!(config.integrations.last_fm_session_key, None);
 
-        config.update_config({
-            VeilConfigEvent {
-                last_fm_session_key: Some("hello".to_owned()),
-                ..VeilConfigEvent::default()
-            }
-        });
+        config.update_config(VeilConfigChange::SetLastFmSessionKey("hello".to_owned()));
 
         assert_eq!(
             config.integrations.last_fm_session_key,
@@ -278,12 +265,7 @@ mod tests {
 
         assert_eq!(config.playback.queue_origin, None);
 
-        config.update_config({
-            VeilConfigEvent {
-                queue_origin: Some(origin.clone()),
-                ..VeilConfigEvent::default()
-            }
-        });
+        config.update_config(VeilConfigChange::SetQueueOrigin(origin.clone()));
 
         assert_eq!(config.playback.queue_origin, Some(origin));
     }
@@ -294,12 +276,7 @@ mod tests {
 
         assert_eq!(config.playback.queue_idx, usize::MIN);
 
-        config.update_config({
-            VeilConfigEvent {
-                queue_idx: Some(usize::MAX),
-                ..VeilConfigEvent::default()
-            }
-        });
+        config.update_config(VeilConfigChange::SetQueueIdx(usize::MAX));
 
         assert_eq!(config.playback.queue_idx, usize::MAX);
     }
@@ -310,12 +287,7 @@ mod tests {
 
         assert_eq!(config.playback.repeat_mode, RepeatMode::None);
 
-        config.update_config({
-            VeilConfigEvent {
-                repeat_mode: Some(RepeatMode::Track),
-                ..VeilConfigEvent::default()
-            }
-        });
+        config.update_config(VeilConfigChange::SetRepeatMode(RepeatMode::Track));
 
         assert_eq!(config.playback.repeat_mode, RepeatMode::Track);
     }
