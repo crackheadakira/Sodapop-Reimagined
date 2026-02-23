@@ -88,25 +88,6 @@ pub fn next_track_status(
         })
 }
 
-/*
-// TODO: FIX THE CHANNEL
-pub fn send_player_progress_via_channel(
-    state: &VeilState,
-    on_event: &Channel<PlayerProgressEvent>,
-) {
-    let player = lock_or_log(state.player.read(), "Player Read Lock").unwrap();
-
-    if let media_controls::PlayerState::Playing = player.state {
-        let progress = player.get_progress();
-        if on_event
-            .send(PlayerProgressEvent::Progress { progress })
-            .is_err()
-        {
-            logging::error!("Progress channel closed");
-        }
-    }
-}*/
-
 pub fn try_preloading_next_sound_handle(
     state: &VeilState,
     player: &mut RwLockWriteGuard<'_, DefaultPlayer>,
@@ -196,8 +177,6 @@ impl EventSystemHandler for PlayerEvent {
             }
         };
 
-        // TODO: Implement frontend emits.
-        // These emits would then sync the frontend to the backend, with the backend being the source of truth.
         match event {
             PlayerEvent::Initialize { track, progress } => {
                 Self::initialize_player_with_track(state, track, progress)?;

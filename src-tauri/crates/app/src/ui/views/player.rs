@@ -7,11 +7,8 @@ use media_controls::PlayerState;
 
 use crate::{
     AppState,
-    events::{PlayerEvent, UIUpdateEvent},
-    ui::{
-        AlbumCoverCacheProvider, AppStateContext, Icon, IconVariants, Slider, StyleFromColorSet, p,
-        small,
-    },
+    events::{PlayerEvent, Route, UIUpdateEvent},
+    ui::{AppStateContext, Icon, IconVariants, Slider, StyleFromColorSet, p, small},
 };
 
 pub struct PlayerView {
@@ -20,6 +17,8 @@ pub struct PlayerView {
     progress_slider: f64,
     volume_slider: f64,
     is_seeking: bool,
+
+    current_track: Option<Tracks>,
 }
 
 impl PlayerView {
@@ -41,12 +40,15 @@ impl PlayerView {
                 .state
         };
 
+        let current_track = Self::get_current_track(cx);
+
         let view = Self {
             focus_handle: cx.focus_handle(),
             player_state,
             progress_slider: progress,
             volume_slider: volume,
             is_seeking: false,
+            current_track,
         };
 
         Self::subscribe_to_events(cx);
@@ -74,11 +76,17 @@ impl PlayerView {
                         view.player_state = PlayerState::Paused;
                         cx.notify();
                     }
-                    PlayerEvent::Resume
-                    | PlayerEvent::NewTrack { track: _ }
+                    PlayerEvent::Resume => {
+                        view.player_state = PlayerState::Playing;
+
+                        cx.notify();
+                    }
+                    PlayerEvent::NewTrack { track: _ }
                     | PlayerEvent::NextTrackInQueue
                     | PlayerEvent::PreviousTrackInQueue => {
                         view.player_state = PlayerState::Playing;
+                        view.current_track = Self::get_current_track(cx);
+
                         cx.notify();
                     }
                     PlayerEvent::SetVolume { volume } => {
@@ -128,7 +136,7 @@ impl Render for PlayerView {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = cx.app_theme();
 
-        let Some(track) = Self::get_current_track(cx) else {
+        let Some(ref track) = self.current_track else {
             return div();
         };
 
@@ -138,7 +146,6 @@ impl Render for PlayerView {
         };
 
         div()
-            .image_cache(AlbumCoverCacheProvider::new("cache:player", 3))
             .track_focus(&self.focus_handle)
             .h(rems(7.0))
             .w_full()
@@ -155,7 +162,7 @@ impl Render for PlayerView {
                     .col_span(1)
                     .flex()
                     .gap_5()
-                    .child(img(track.cover_path).size_20().rounded_md())
+                    .child(img(track.cover_path.clone()).size_20().rounded_md())
                     .child(
                         div()
                             .flex()
@@ -163,14 +170,23 @@ impl Render for PlayerView {
                             .justify_center()
                             .gap_1()
                             .child(
-                                p(track.name)
+                                p(track.name.clone())
                                     .id("player:track_name")
                                     .text_from(&theme.text.primary)
                                     .cursor_pointer()
-                                    .truncate(),
+                                    .truncate()
+                                    .on_click(cx.listener(|view, _, _, cx| {
+                                        let state = cx.app_state();
+
+                                        if let Some(ref track) = view.current_track {
+                                            state.ui_bus.emit(UIUpdateEvent::Navigate {
+                                                route: Route::Album { id: track.album_id },
+                                            });
+                                        };
+                                    })),
                             )
                             .child(
-                                small(track.artist_name)
+                                small(track.artist_name.clone())
                                     .id("player:artist_name")
                                     .text_from(&theme.text.secondary)
                                     .cursor_pointer()
@@ -370,7 +386,7 @@ impl Render for PlayerView {
     }
 }
 
-fn format_time(seconds: f64) -> String {
+pub fn format_time(seconds: f64) -> String {
     let mins = (seconds / 60.0) as u32;
     let secs = (seconds % 60.0) as u32;
     format!("{:02}:{:02}", mins, secs)

@@ -15,7 +15,7 @@ pub mod events {
     pub use super::event_bus::{EventBus, EventSystemHandler};
     pub use super::queue::QueueEvent;
     pub use super::services::player::PlayerEvent;
-    pub use super::services::ui::UIUpdateEvent;
+    pub use super::services::ui::{Route, UIUpdateEvent};
 }
 
 #[tokio::main]

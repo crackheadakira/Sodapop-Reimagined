@@ -2,13 +2,15 @@ use std::sync::Arc;
 
 use crate::{
     VeilConfigChange, VeilState,
+    events::{Route, UIUpdateEvent},
     state::{AppState, handle_state_setup},
     ui::{
-        Sidebar, Theme,
+        AlbumCoverCacheProvider, Sidebar, Theme,
         assets::VeilAssetSource,
         slider,
         views::{
-            AllAlbumsView, Home, ModalLayer, PlayerView,
+            AllAlbumsView, CollectionView, Home, ModalLayer, PlayerView,
+            collection_view::CollectionKind,
             modal_layer::{self, GlobalModalLayer},
         },
     },
@@ -102,28 +104,23 @@ pub fn run() {
         });
 }
 
-#[derive(Clone, Copy)]
-pub enum Route {
-    Home,
-    AllAlbums,
-    Album { id: u32 },
-    Playlist { id: u32 },
-    Settings,
-}
-
 struct AppWindow {
     focus_handle: FocusHandle,
-    all_albums_view: Option<Entity<AllAlbumsView>>,
-    home: Option<Entity<Home>>,
-    player_view: Entity<PlayerView>,
     modal_layer: Entity<ModalLayer>,
     route: Route,
+
+    player_view: Entity<PlayerView>,
+    home: Option<Entity<Home>>,
+    all_albums_view: Option<Entity<AllAlbumsView>>,
+    collection_view: Option<Entity<CollectionView>>,
 }
 
 impl AppWindow {
     fn new(cx: &mut Context<Self>) -> Self {
         let focus_handle = cx.focus_handle();
         let modal_layer = cx.global::<GlobalModalLayer>().0.clone();
+
+        Self::subscribe_to_events(cx);
 
         Self {
             focus_handle,
@@ -132,12 +129,29 @@ impl AppWindow {
             route: Route::Home,
             player_view: cx.new(PlayerView::new),
             modal_layer,
+            collection_view: None,
         }
     }
 
     fn navigate(&mut self, route: Route, cx: &mut Context<Self>) {
         self.route = route;
         cx.notify();
+    }
+
+    fn subscribe_to_events(cx: &mut Context<Self>) {
+        cx.spawn(async move |view, cx| {
+            let ui_bus = cx.read_global::<AppState, _>(|state, _| state.0.ui_bus.clone());
+            let mut receiver = ui_bus.subscribe();
+
+            while let Ok(event) = receiver.recv().await {
+                let _ = view.update(cx, |view, cx| {
+                    if let UIUpdateEvent::Navigate { route } = event {
+                        view.navigate(route, cx);
+                    }
+                });
+            }
+        })
+        .detach();
     }
 
     fn render_route(&mut self, cx: &mut Context<Self>) -> impl IntoElement {
@@ -155,6 +169,23 @@ impl AppWindow {
 
                 view.clone().into_any_element()
             }
+            Route::Album { id } => {
+                let needs_new = match &self.collection_view {
+                    Some(view) => view.read(cx).data.id != *id,
+                    None => true,
+                };
+
+                if needs_new {
+                    self.collection_view =
+                        Some(cx.new(|cx| CollectionView::new(cx, *id, CollectionKind::Album)));
+                }
+
+                self.collection_view
+                    .as_ref()
+                    .unwrap()
+                    .clone()
+                    .into_any_element()
+            }
             _ => div().into_any_element(),
         }
     }
@@ -171,6 +202,7 @@ impl Render for AppWindow {
         let theme = cx.global::<Theme>();
 
         div()
+            .image_cache(AlbumCoverCacheProvider::new("cache:base", 3))
             .size_full()
             .relative()
             .bg(theme.background.primary.default)

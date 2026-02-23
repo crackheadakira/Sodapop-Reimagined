@@ -125,7 +125,6 @@ pub fn initialize_state(_cx: &mut App) -> Result<VeilState, VeilError> {
     })
 }
 
-// TODO: MIGRATE TO EVENT MANAGER FOR GPUI
 pub fn attach_media_controls_to_player(state: Arc<VeilState>) -> Result<(), anyhow::Error> {
     let mut player = lock_or_log(state.player.write(), "Player Write Lock")?;
 

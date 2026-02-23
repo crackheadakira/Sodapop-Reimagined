@@ -5,7 +5,8 @@ use gpui::{
     StatefulInteractiveElement, Styled, Window, div,
 };
 
-use crate::ui::{AppStateContext, StyleFromColorSet, Theme, app::Route, small};
+use crate::events::Route;
+use crate::ui::{AppStateContext, StyleFromColorSet, Theme, small};
 
 type NavigateHandler = Rc<dyn Fn(&Route, &mut Window, &mut App)>;
 

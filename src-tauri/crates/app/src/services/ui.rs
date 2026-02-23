@@ -2,6 +2,15 @@ use common::Tracks;
 
 use crate::queue::RepeatMode;
 
+#[derive(Clone, Copy)]
+pub enum Route {
+    Home,
+    AllAlbums,
+    Album { id: u32 },
+    Playlist { id: u32 },
+    Settings,
+}
+
 #[derive(Clone)]
 pub enum PlayButtonState {
     Playing,
@@ -29,5 +38,9 @@ pub enum UIUpdateEvent {
 
     ProgressUpdate {
         progress: f64,
+    },
+
+    Navigate {
+        route: Route,
     },
 }
