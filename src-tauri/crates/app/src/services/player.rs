@@ -271,21 +271,9 @@ impl PlayerEvent {
 
         state.resume_notify.notify_waiters();
 
-        /*
-        UIUpdateEvent::emit(
-            &UIUpdateEvent::PlayButton {
-                state: PlayButtonState::Playing,
-            },
-            handle,
-        )?;
-
-        UIUpdateEvent::emit(
-            &UIUpdateEvent::TrackChange {
-                track: track.clone(),
-            },
-            handle,
-        )?;
-        */
+        state.ui_bus.emit(UIUpdateEvent::TrackChange {
+            track: track.clone(),
+        });
 
         if online.discord_enabled {
             // Get album cover URL from Last.FM if Discord & Last.FM are enabled.

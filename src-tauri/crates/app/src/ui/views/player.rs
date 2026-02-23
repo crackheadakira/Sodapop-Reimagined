@@ -81,15 +81,10 @@ impl PlayerView {
 
                         cx.notify();
                     }
-                    PlayerEvent::NewTrack { track } => {
+                    PlayerEvent::NewTrack { track: _ }
+                    | PlayerEvent::NextTrackInQueue
+                    | PlayerEvent::PreviousTrackInQueue => {
                         view.player_state = PlayerState::Playing;
-                        view.current_track = Some(track);
-
-                        cx.notify();
-                    }
-                    PlayerEvent::NextTrackInQueue | PlayerEvent::PreviousTrackInQueue => {
-                        view.player_state = PlayerState::Playing;
-                        view.current_track = Self::get_current_track(cx);
 
                         cx.notify();
                     }
@@ -114,6 +109,11 @@ impl PlayerView {
                     {
                         view.progress_slider = progress;
 
+                        cx.notify();
+                    }
+
+                    if let UIUpdateEvent::TrackChange { track } = event {
+                        view.current_track = Some(track);
                         cx.notify();
                     }
                 });
@@ -166,19 +166,24 @@ impl Render for PlayerView {
                     .col_span(1)
                     .flex()
                     .gap_5()
-                    .child(img(track.cover_path.clone()).size_20().rounded_md())
+                    .child(
+                        img(track.cover_path.clone())
+                            .size_20()
+                            .rounded_md()
+                            .flex_shrink_0(),
+                    )
                     .child(
                         div()
                             .flex()
                             .flex_col()
                             .justify_center()
                             .gap_1()
+                            .truncate()
                             .child(
                                 p(track.name.clone())
                                     .id("player:track_name")
                                     .text_from(&theme.text.primary)
                                     .cursor_pointer()
-                                    .truncate()
                                     .on_click(cx.listener(|view, _, _, cx| {
                                         let state = cx.app_state();
 
@@ -193,8 +198,7 @@ impl Render for PlayerView {
                                 small(track.artist_name.clone())
                                     .id("player:artist_name")
                                     .text_from(&theme.text.secondary)
-                                    .cursor_pointer()
-                                    .truncate(),
+                                    .cursor_pointer(),
                             ),
                     ),
             )

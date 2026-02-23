@@ -9,6 +9,7 @@ use gpui::{
 
 use crate::{
     events::{PlayerEvent, Route, UIUpdateEvent},
+    queue::{QueueEvent, QueueOrigin},
     ui::{AppStateContext, Icon, IconVariants, h2, h6, p, small, views::player::format_time},
 };
 
@@ -272,6 +273,9 @@ impl Render for CollectionView {
                                         .hover(|this| this.bg(theme.background.secondary.hovered))
                                         .on_click({
                                             let idx = idx.clone();
+                                            let is_playlist_view = is_playlist_view.clone();
+                                            let origin_id = this.data.id.clone();
+
                                             cx.listener(
                                                 move |this, event: &gpui::ClickEvent, _, cx| {
                                                     if event.click_count() != 2 {
@@ -284,6 +288,27 @@ impl Render for CollectionView {
                                                     state
                                                         .player_bus
                                                         .emit(PlayerEvent::NewTrack { track });
+
+                                                    let queue_origin = if is_playlist_view {
+                                                        QueueOrigin::Playlist { id: origin_id }
+                                                    } else {
+                                                        QueueOrigin::Album { id: origin_id }
+                                                    };
+
+                                                    let track_ids = this
+                                                        .data
+                                                        .tracks
+                                                        .iter()
+                                                        .map(|t| t.id)
+                                                        .collect::<Vec<_>>();
+
+                                                    state.queue_bus.emit(
+                                                        QueueEvent::SetGlobalQueue {
+                                                            tracks: track_ids,
+                                                            queue_idx: idx,
+                                                            origin: queue_origin,
+                                                        },
+                                                    );
                                                 },
                                             )
                                         })

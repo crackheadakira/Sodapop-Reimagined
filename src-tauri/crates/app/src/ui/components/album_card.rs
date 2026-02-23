@@ -1,10 +1,13 @@
 use common::Albums;
 use gpui::{
-    App, InteractiveElement, IntoElement, ParentElement, RenderOnce, Styled, StyledImage, Window,
-    div, img, rems,
+    App, InteractiveElement, IntoElement, MouseButton, ParentElement, RenderOnce, Styled,
+    StyledImage, Window, div, img, rems,
 };
 
-use crate::ui::{AppStateContext, p, small};
+use crate::{
+    events::{Route, UIUpdateEvent},
+    ui::{AppStateContext, p, small},
+};
 
 #[derive(Clone, IntoElement)]
 pub struct AlbumCard {
@@ -18,6 +21,16 @@ impl RenderOnce for AlbumCard {
 
         div()
             .group(&group_name)
+            .on_mouse_down(MouseButton::Left, {
+                let album_id = self.album.id.clone();
+                move |_, _, cx| {
+                    let state = cx.app_state();
+
+                    state.ui_bus.emit(UIUpdateEvent::Navigate {
+                        route: Route::Album { id: album_id },
+                    });
+                }
+            })
             .cursor_pointer()
             .flex()
             .flex_col()
