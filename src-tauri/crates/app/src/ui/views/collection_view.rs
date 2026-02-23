@@ -1,16 +1,19 @@
+use std::ops::Range;
+
 use common::{AlbumWithTracks, PlaylistWithTracks, Tracks};
 use gpui::{
-    App, Context, InteractiveElement, IntoElement, ParentElement, Render, Styled,
-    UniformListScrollHandle, Window, div, img, prelude::FluentBuilder, uniform_list,
+    App, Context, InteractiveElement, IntoElement, ParentElement, Render,
+    StatefulInteractiveElement, Styled, Window, div, img, prelude::FluentBuilder, rems,
+    uniform_list,
 };
 
-use crate::ui::{
-    AppStateContext, Icon, IconVariants, h2, h6, p, small, views::player::format_time,
+use crate::{
+    events::{PlayerEvent, Route, UIUpdateEvent},
+    ui::{AppStateContext, Icon, IconVariants, h2, h6, p, small, views::player::format_time},
 };
 
 pub struct CollectionView {
     pub data: CollectionData,
-    scroll_handle: UniformListScrollHandle,
 }
 
 impl CollectionView {
@@ -34,14 +37,11 @@ impl CollectionView {
             }
         };
 
-        Self {
-            data,
-            scroll_handle: UniformListScrollHandle::new(),
-        }
+        Self { data }
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum CollectionKind {
     Album,
     Playlist,
@@ -117,6 +117,7 @@ impl Render for CollectionView {
             "song"
         };
 
+        // TODO: do code modularization / cleanup
         div()
             .size_full()
             .flex()
@@ -205,11 +206,10 @@ impl Render for CollectionView {
                             .gap_4()
                             .p_3()
                             .px_4()
-                            .children([
-                                small("#"),
-                                small("Title").flex_grow(),
-                                small("Album").flex_grow(),
-                            ])
+                            .children([small("#"), small("Title").flex_grow()])
+                            .when(self.data.kind == CollectionKind::Playlist, |this| {
+                                this.child(small("Album").flex_grow())
+                            })
                             .child(
                                 Icon::new(IconVariants::Clock)
                                     .size_4()
@@ -219,29 +219,126 @@ impl Render for CollectionView {
                     )
                     // TODO: fix issue with height being full, not conforming to the tracks if theres not
                     // enough to fill out screen.
+                    // TODO: Improve the table DX (w/ headers & content automatically lining up)
                     .child(
                         uniform_list(
                             format!("track_list:album_{}", self.data.id),
                             self.data.tracks.len(),
-                            cx.processor(|this, range, _, cx| {
+                            cx.processor(|this, range: Range<usize>, _, cx| {
                                 let mut track_divs = Vec::new();
                                 let theme = cx.app_theme();
+
+                                let is_playlist_view = this.data.kind == CollectionKind::Playlist;
 
                                 for idx in range {
                                     let track: &Tracks = &this.data.tracks[idx];
                                     let group_name = format!("track_list:group_{}", track.id);
+                                    let display_index: usize = idx + 1;
+                                    let display_width = this.data.tracks.len().to_string().len()
+                                        as f32
+                                        * (10.0 / 16.0);
+
+                                    let album_name_div = if is_playlist_view {
+                                        div()
+                                            .id(format!("track_list:{}_album_name", track.id))
+                                            .flex_grow()
+                                            .flex_basis(rems(0.0))
+                                            .child(
+                                                small(track.album_name.clone())
+                                                    .text_color(theme.text.secondary.default),
+                                            )
+                                            .truncate()
+                                            .hover(|this| {
+                                                this.underline()
+                                                    .text_color(theme.text.secondary.hovered)
+                                            })
+                                            .on_click({
+                                                let idx = (idx as u32).clone();
+                                                cx.listener(move |_, _, _, cx| {
+                                                    let state = cx.app_state();
+
+                                                    state.ui_bus.emit(UIUpdateEvent::Navigate {
+                                                        route: Route::Album { id: idx },
+                                                    });
+                                                })
+                                            })
+                                    } else {
+                                        div().id(format!("track_list:{}_album_name", track.id))
+                                    };
 
                                     let track_item = div()
-                                        .group(group_name)
+                                        .id(format!("track_list:{}", track.id))
+                                        .group(group_name.clone())
                                         .hover(|this| this.bg(theme.background.secondary.hovered))
+                                        .on_click({
+                                            let idx = idx.clone();
+                                            cx.listener(
+                                                move |this, event: &gpui::ClickEvent, _, cx| {
+                                                    if event.click_count() != 2 {
+                                                        return;
+                                                    };
+
+                                                    let state = cx.app_state();
+                                                    let track = this.data.tracks[idx].clone();
+
+                                                    state
+                                                        .player_bus
+                                                        .emit(PlayerEvent::NewTrack { track });
+                                                },
+                                            )
+                                        })
                                         .p_3()
                                         .px_4()
                                         .flex()
                                         .w_full()
-                                        .h_16()
+                                        .gap_4()
+                                        .items_center()
+                                        .cursor_pointer()
                                         .child(
-                                            p(track.name.clone())
-                                                .text_color(theme.text.primary.default),
+                                            div()
+                                                .flex()
+                                                .flex_shrink_0()
+                                                .items_center()
+                                                .gap_4()
+                                                .child(
+                                                    p(display_index.to_string())
+                                                        .text_color(theme.text.tertiary.default)
+                                                        .group_hover(group_name, |this| {
+                                                            this.text_color(
+                                                                theme.text.tertiary.hovered,
+                                                            )
+                                                        })
+                                                        .text_right()
+                                                        .w(rems(display_width)),
+                                                )
+                                                .child(
+                                                    img(track.cover_path.clone())
+                                                        .size_10()
+                                                        .rounded_md(),
+                                                ),
+                                        )
+                                        .child(
+                                            div()
+                                                .flex_grow()
+                                                .flex_basis(rems(0.0))
+                                                .child(
+                                                    p(track.name.clone())
+                                                        .text_color(theme.text.primary.default)
+                                                        .mb_1()
+                                                        .truncate(),
+                                                )
+                                                .child(
+                                                    p(track.artist_name.clone())
+                                                        .text_color(theme.text.secondary.default)
+                                                        .truncate(),
+                                                ),
+                                        )
+                                        .child(album_name_div)
+                                        .child(
+                                            p(format_time(track.duration as f64))
+                                                .text_color(theme.text.primary.default)
+                                                .text_right()
+                                                .col_end(-1),
                                         );
 
                                     track_divs.push(track_item);
@@ -251,8 +348,7 @@ impl Render for CollectionView {
                             }),
                         )
                         .w_full()
-                        .h_full()
-                        .track_scroll(&self.scroll_handle),
+                        .h_full(),
                     ),
             )
     }

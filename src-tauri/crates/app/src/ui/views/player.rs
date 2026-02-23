@@ -81,9 +81,13 @@ impl PlayerView {
 
                         cx.notify();
                     }
-                    PlayerEvent::NewTrack { track: _ }
-                    | PlayerEvent::NextTrackInQueue
-                    | PlayerEvent::PreviousTrackInQueue => {
+                    PlayerEvent::NewTrack { track } => {
+                        view.player_state = PlayerState::Playing;
+                        view.current_track = Some(track);
+
+                        cx.notify();
+                    }
+                    PlayerEvent::NextTrackInQueue | PlayerEvent::PreviousTrackInQueue => {
                         view.player_state = PlayerState::Playing;
                         view.current_track = Self::get_current_track(cx);
 
