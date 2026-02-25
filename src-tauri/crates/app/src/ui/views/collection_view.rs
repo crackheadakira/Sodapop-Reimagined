@@ -48,9 +48,9 @@ pub enum CollectionKind {
     Playlist,
 }
 
-impl Into<String> for CollectionKind {
-    fn into(self) -> String {
-        match self {
+impl From<CollectionKind> for String {
+    fn from(val: CollectionKind) -> Self {
+        match val {
             CollectionKind::Album => "Album",
             CollectionKind::Playlist => "Playlist",
         }
@@ -146,8 +146,7 @@ impl Render for CollectionView {
                             div().flex().cursor_default().flex_col().gap_1().child(
                                 div()
                                     .child(
-                                        h6(self.data.kind.clone())
-                                            .text_color(theme.text.tertiary.default),
+                                        h6(self.data.kind).text_color(theme.text.tertiary.default),
                                     )
                                     .child(
                                         h2(self.data.title.clone())
@@ -158,7 +157,7 @@ impl Render for CollectionView {
                                             p(subtitle).text_color(theme.text.secondary.default),
                                         )
                                     })
-                                    .when_some(self.data.duration.clone(), |this, duration| {
+                                    .when_some(self.data.duration, |this, duration| {
                                         this.child(
                                             small(format!(
                                                 "{}, {} {song_or_songs}",
@@ -177,7 +176,7 @@ impl Render for CollectionView {
                                             .text_color(theme.text.tertiary.default),
                                         )
                                     })
-                                    .when_some(self.data.year.clone(), |this, year| {
+                                    .when_some(self.data.year, |this, year| {
                                         this.child(
                                             small(year.to_string())
                                                 .text_color(theme.text.tertiary.default),
@@ -254,7 +253,7 @@ impl Render for CollectionView {
                                                     .text_color(theme.text.secondary.hovered)
                                             })
                                             .on_click({
-                                                let idx = (idx as u32).clone();
+                                                let idx = idx as u32;
                                                 cx.listener(move |_, _, _, cx| {
                                                     let state = cx.app_state();
 
@@ -272,9 +271,7 @@ impl Render for CollectionView {
                                         .group(group_name.clone())
                                         .hover(|this| this.bg(theme.background.secondary.hovered))
                                         .on_click({
-                                            let idx = idx.clone();
-                                            let is_playlist_view = is_playlist_view.clone();
-                                            let origin_id = this.data.id.clone();
+                                            let origin_id = this.data.id;
 
                                             cx.listener(
                                                 move |this, event: &gpui::ClickEvent, _, cx| {

@@ -76,12 +76,8 @@ impl PlayerView {
                         view.player_state = PlayerState::Paused;
                         cx.notify();
                     }
-                    PlayerEvent::Resume => {
-                        view.player_state = PlayerState::Playing;
-
-                        cx.notify();
-                    }
-                    PlayerEvent::NewTrack { track: _ }
+                    PlayerEvent::Resume
+                    | PlayerEvent::NewTrack { track: _ }
                     | PlayerEvent::NextTrackInQueue
                     | PlayerEvent::PreviousTrackInQueue => {
                         view.player_state = PlayerState::Playing;

@@ -33,9 +33,9 @@ pub enum IconVariants {
     WindowNew,
 }
 
-impl Into<SharedString> for IconVariants {
-    fn into(self) -> SharedString {
-        let file_name = match self {
+impl From<IconVariants> for SharedString {
+    fn from(val: IconVariants) -> Self {
+        let file_name = match val {
             IconVariants::Add => "FluentAdd24Regular",
             IconVariants::AddSquareMultiple => "FluentAddSquareMultiple24Regular",
             IconVariants::ArrowRepeat1 => "FluentArrowRepeat116Filled",

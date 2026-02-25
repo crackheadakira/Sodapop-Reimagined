@@ -22,7 +22,7 @@ impl RenderOnce for AlbumCard {
         div()
             .group(&group_name)
             .on_mouse_down(MouseButton::Left, {
-                let album_id = self.album.id.clone();
+                let album_id = self.album.id;
                 move |_, _, cx| {
                     let state = cx.app_state();
 

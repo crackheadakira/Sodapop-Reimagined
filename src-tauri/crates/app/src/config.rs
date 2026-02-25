@@ -133,17 +133,17 @@ impl VeilConfig {
         match change {
             VeilConfigChange::SetTheme(theme_mode) => self.ui.theme = theme_mode,
             VeilConfigChange::SetDiscordStatus(status) => {
-                self.integrations.discord_enabled = status
+                self.integrations.discord_enabled = status;
             }
             VeilConfigChange::SetMusicDirectory(music_dir) => {
-                self.library.music_dir = Some(music_dir)
+                self.library.music_dir = Some(music_dir);
             }
             VeilConfigChange::SetLastFmStatus(status) => self.integrations.last_fm_enabled = status,
             VeilConfigChange::SetLastFmSessionKey(session_key) => {
-                self.integrations.last_fm_session_key = Some(session_key)
+                self.integrations.last_fm_session_key = Some(session_key);
             }
             VeilConfigChange::SetQueueOrigin(queue_origin) => {
-                self.playback.queue_origin = Some(queue_origin)
+                self.playback.queue_origin = Some(queue_origin);
             }
             VeilConfigChange::SetQueueIdx(queue_idx) => self.playback.queue_idx = queue_idx,
             VeilConfigChange::SetRepeatMode(repeat_mode) => self.playback.repeat_mode = repeat_mode,
