@@ -7,12 +7,11 @@ edition = "2024"
 workspace = true
 
 [dependencies]
-serde = { version = "1.0.219", features = ["derive"], optional = true }
-specta = { version = "2.0.0-rc.21", optional = true }
-rusqlite = { version = "0.38.0", features = ["bundled"], optional = true }
+serde = { workspace = true, optional = true }
+rusqlite = { workspace = true, optional = true }
 blake3 = { version = "1.8.3", optional = true }
 
 [features]
 default = []
 rusqlite = ["dep:rusqlite", "dep:blake3"]
-serialization = ["dep:serde", "dep:specta"]
+serialization = ["dep:serde"]

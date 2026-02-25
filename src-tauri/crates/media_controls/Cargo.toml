@@ -16,8 +16,7 @@ common.workspace = true
 logging.workspace = true
 
 serde = { version = "1.0.219", features = ["derive"], optional = true }
-specta = { version = "2.0.0-rc.21", optional = true }
 
 [features]
 default = []
-serialization = ["dep:serde", "dep:specta"]
+serialization = ["dep:serde"]
